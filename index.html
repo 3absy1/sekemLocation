@@ -36,23 +36,63 @@
 
       <div>
         <label class="block font-medium">صورة</label>
-        <input type="file" name="image" accept="image/*" class="w-full border p-2 rounded">
+        <input type="file" name="image" id="imageInput" accept="image/*" class="w-full border p-2 rounded">
+        <img id="imagePreview" class="hidden mt-3 w-32 h-32 object-cover rounded-lg border" alt="معاينة الصورة">
       </div>
 
       <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">إرسال</button>
     </form>
+  </div>
 
-    <div id="result" class="mt-6 p-4 bg-gray-50 border rounded text-sm hidden"></div>
+  <!-- Modal -->
+  <div id="dialog" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-80 text-center">
+      <h2 id="dialogTitle" class="text-xl font-bold mb-3"></h2>
+      <p id="dialogMessage" class="text-gray-600 mb-4"></p>
+      <button id="closeDialog" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">موافق</button>
+    </div>
   </div>
 
   <script>
     const form = document.getElementById('fakeForm');
-    const resultBox = document.getElementById('result');
+    const dialog = document.getElementById('dialog');
+    const dialogTitle = document.getElementById('dialogTitle');
+    const dialogMessage = document.getElementById('dialogMessage');
+    const closeDialog = document.getElementById('closeDialog');
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
 
+    // Show image preview
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          imagePreview.src = reader.result;
+          imagePreview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      } else {
+        imagePreview.classList.add('hidden');
+      }
+    });
+
+    // Modal control
+    function showDialog(title, message, success = true) {
+      dialogTitle.textContent = title;
+      dialogTitle.className = success ? 'text-green-600 text-xl font-bold mb-3' : 'text-red-600 text-xl font-bold mb-3';
+      dialogMessage.textContent = message;
+      dialog.classList.remove('hidden', 'opacity-0');
+      dialog.classList.add('flex');
+    }
+
+    closeDialog.addEventListener('click', () => {
+      dialog.classList.add('hidden');
+    });
+
+    // Form submit
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      resultBox.classList.remove('hidden');
-      resultBox.textContent = "جارٍ الإرسال...";
 
       const formData = new FormData(form);
       const imageFile = formData.get('image');
@@ -100,9 +140,17 @@
         });
 
         const data = await response.json();
-        resultBox.textContent = JSON.stringify(data, null, 2);
+
+        if (data.error) {
+          showDialog("فشل الإرسال ❌", "حدث خطأ أثناء الإرسال. تحقق من البيانات وأعد المحاولة.", false);
+        } else {
+          showDialog("تم الإرسال بنجاح ✅", "تم إرسال البيانات بنجاح إلى النظام.", true);
+          form.reset();
+          imagePreview.classList.add('hidden');
+        }
+
       } catch (error) {
-        resultBox.textContent = "❌ حدث خطأ أثناء الإرسال: " + error.message;
+        showDialog("خطأ في الاتصال ❌", "حدث خطأ أثناء الاتصال بالخادم: " + error.message, false);
       }
     });
   </script>
