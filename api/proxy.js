@@ -4,7 +4,7 @@ import cors from "cors";
 
 const app = express();
 app.use(express.json());
-app.use(cors()); // allow frontend access
+app.use(cors());
 
 app.post("/proxy", async (req, res) => {
   try {
@@ -13,7 +13,7 @@ app.post("/proxy", async (req, res) => {
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "Cookie": "session_id=14675a2df9421631a80754b6dcf3960d6e7de827",
+        "Cookie": "session_id=14675a2df9421631a80754b6dcf3960d6e7de827"
       },
       body: JSON.stringify(req.body)
     });
@@ -25,4 +25,4 @@ app.post("/proxy", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("Proxy running on http://localhost:3000"));
+export default app;

@@ -100,7 +100,7 @@
       const responseBox = document.getElementById('responseBox');
 
       try {
-        const res = await fetch("http://localhost:3000/proxy", {
+        const res = await fetch("/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
