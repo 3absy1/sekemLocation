@@ -3,7 +3,7 @@ import fetch from "node-fetch";
 import cors from "cors";
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "10mb" })); // increase limit for image base64
 app.use(cors());
 
 app.post("/proxy", async (req, res) => {
@@ -21,8 +21,10 @@ app.post("/proxy", async (req, res) => {
     const data = await response.text();
     res.status(response.status).send(data);
   } catch (error) {
+    console.error("Proxy Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
+// ✅ Wrap express app into a handler for Vercel
 export default app;
