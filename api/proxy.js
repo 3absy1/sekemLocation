@@ -13,7 +13,7 @@ app.post("/proxy", async (req, res) => {
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "Cookie": "session_id=cb8d87fd2f320aca85562519dc6bbf762d2f133c"
+        "Cookie": "session_id=a476d5281d7a9138db7a7b265ccb1124f2a09a34"
       },
       body: JSON.stringify(req.body)
     });
