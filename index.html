@@ -13,16 +13,6 @@
 
     <form id="perDiemForm" class="space-y-4">
       <div>
-        <label for="email" class="block text-gray-700 font-medium mb-1">البريد الإلكتروني</label>
-        <input id="email" type="email" placeholder="example@company.com" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 outline-none" required>
-      </div>
-
-      <div>
-        <label for="password" class="block text-gray-700 font-medium mb-1">كلمة المرور</label>
-        <input id="password" type="password" placeholder="اكتب كلمة المرور" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 outline-none" required>
-      </div>
-
-      <div>
         <label for="customer_name" class="block text-gray-700 font-medium mb-1">اسم العميل</label>
         <input id="customer_name" placeholder="اكتب اسم العميل" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 outline-none" required>
       </div>
@@ -78,12 +68,30 @@
       e.preventDefault();
 
       const file = document.getElementById('image').files[0];
+      const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB (raw file size)
       const toBase64 = file => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = reject;
       });
+
+      const responseBox = document.getElementById('responseBox');
+      responseBox.classList.add('hidden');
+
+      if (!file) {
+        responseBox.classList.remove('hidden');
+        responseBox.textContent = "خطأ: اختر صورة أولاً.";
+        responseBox.className = "mt-4 p-4 rounded-lg border border-red-400 bg-red-50 text-sm overflow-auto";
+        return;
+      }
+
+      if (file.size > MAX_IMAGE_BYTES) {
+        responseBox.classList.remove('hidden');
+        responseBox.textContent = `خطأ: حجم الصورة كبير جداً. الحد الأقصى ${Math.floor(MAX_IMAGE_BYTES / (1024 * 1024))}MB.`;
+        responseBox.className = "mt-4 p-4 rounded-lg border border-red-400 bg-red-50 text-sm overflow-auto";
+        return;
+      }
 
       const imageBase64 = await toBase64(file);
       const body = {
@@ -106,21 +114,12 @@
           context: {}
         }
       };
-      const requestBody = {
-        auth: {
-          email: document.getElementById('email').value.trim(),
-          password: document.getElementById('password').value
-        },
-        payload: body
-      };
-
-      const responseBox = document.getElementById('responseBox');
 
       try {
         const res = await fetch("/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify(body)
         });
 
         const data = await res.text();

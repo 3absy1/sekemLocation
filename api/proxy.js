@@ -5,18 +5,18 @@ import cors from "cors";
 const ODOO_BASE_URL = "https://sekemportal.hooktrack.life";
 const LOGIN_URL = `${ODOO_BASE_URL}/web/login`;
 const CREATE_URL = `${ODOO_BASE_URL}/web/dataset/call_kw/per.diem/create`;
-const sessionStore = new Map();
+const ODOO_EMAIL = process.env.ODOO_EMAIL || "mohamed.ali";
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || "123456";
 
 const app = express();
-app.use(express.json({ limit: "10mb" })); // increase limit for image base64
+// image_data is base64 inside JSON, so the payload grows.
+app.use(express.json({ limit: "30mb" }));
 app.use(cors());
 
-function getCacheKey(email) {
-  return email.trim().toLowerCase();
-}
-
 function extractSessionId(response) {
-  const setCookies = response.headers.raw()["set-cookie"] || [];
+  const setCookies = response.headers.getSetCookie
+    ? response.headers.getSetCookie()
+    : response.headers.raw?.()["set-cookie"] || [];
 
   for (const cookie of setCookies) {
     const match = cookie.match(/session_id=([^;]+)/);
@@ -91,20 +91,26 @@ async function loginAndGetSession(email, password) {
     throw new Error(`Failed to login to Odoo. Status ${loginResponse.status}. ${loginBody.slice(0, 200)}`);
   }
 
-  sessionStore.set(getCacheKey(email), sessionId);
   return sessionId;
 }
 
-async function getSessionId(email, password, forceRefresh = false) {
-  const cacheKey = getCacheKey(email);
-  if (!forceRefresh) {
-    const cachedSessionId = sessionStore.get(cacheKey);
-    if (cachedSessionId) {
-      return cachedSessionId;
-    }
-  }
+let cachedSessionId = null;
+let refreshPromise = null;
 
-  return loginAndGetSession(email, password);
+async function getSessionId(forceRefresh = false) {
+  if (!forceRefresh && cachedSessionId) return cachedSessionId;
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = loginAndGetSession(ODOO_EMAIL, ODOO_PASSWORD)
+    .then((sessionId) => {
+      cachedSessionId = sessionId;
+      return sessionId;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
 }
 
 async function callCreateEndpoint(payload, sessionId) {
@@ -125,23 +131,14 @@ async function callCreateEndpoint(payload, sessionId) {
 
 app.post("/proxy", async (req, res) => {
   try {
-    const { auth, payload } = req.body || {};
-    const email = auth?.email?.trim();
-    const password = auth?.password;
-    const requestPayload = payload || req.body;
+    const requestPayload = req.body?.payload || req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({
-        error: "Missing auth.email or auth.password in request body."
-      });
-    }
-
-    let sessionId = await getSessionId(email, password);
+    let sessionId = await getSessionId(false);
     let result = await callCreateEndpoint(requestPayload, sessionId);
 
     if (isSessionExpired(result.response, result.text)) {
-      sessionStore.delete(getCacheKey(email));
-      sessionId = await getSessionId(email, password, true);
+      cachedSessionId = null;
+      sessionId = await getSessionId(true);
       result = await callCreateEndpoint(requestPayload, sessionId);
     }
 
