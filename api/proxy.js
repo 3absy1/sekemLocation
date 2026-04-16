@@ -13,10 +13,26 @@ const app = express();
 app.use(express.json({ limit: "30mb" }));
 app.use(cors());
 
+function getSetCookiesFromResponse(response) {
+  // node-fetch v3 supports getSetCookie(), but we keep a fallback.
+  if (typeof response.headers.getSetCookie === "function") {
+    return response.headers.getSetCookie();
+  }
+
+  const raw = response.headers.raw?.();
+  return raw?.["set-cookie"] || [];
+}
+
+function buildCookieHeader(setCookies) {
+  // Convert ["a=1; Path=/; HttpOnly", "b=2; Path=/"] => "a=1; b=2"
+  return setCookies
+    .map((c) => c.split(";")[0].trim())
+    .filter(Boolean)
+    .join("; ");
+}
+
 function extractSessionId(response) {
-  const setCookies = response.headers.getSetCookie
-    ? response.headers.getSetCookie()
-    : response.headers.raw?.()["set-cookie"] || [];
+  const setCookies = getSetCookiesFromResponse(response);
 
   for (const cookie of setCookies) {
     const match = cookie.match(/session_id=([^;]+)/);
@@ -29,8 +45,10 @@ function extractSessionId(response) {
 }
 
 function extractCsrfToken(html) {
-  const match = html.match(/name="csrf_token"\s+value="([^"]+)"/i)
-    || html.match(/name='csrf_token'\s+value='([^']+)'/i);
+  // Odoo login HTML can vary in attribute order/quoting, so match broadly.
+  const match =
+    html.match(/csrf_token[^>]*value=["']([^"']+)["']/i) ||
+    html.match(/<input[^>]*name=["']csrf_token["'][^>]*value=["']([^"']+)["']/i);
 
   return match?.[1] || null;
 }
@@ -64,9 +82,13 @@ function isSessionExpired(response, text) {
 }
 
 async function loginAndGetSession(email, password) {
-  const loginPageResponse = await fetch(LOGIN_URL);
+  const loginPageResponse = await fetch(LOGIN_URL, { redirect: "manual" });
   const loginPageHtml = await loginPageResponse.text();
   const csrfToken = extractCsrfToken(loginPageHtml);
+  if (!csrfToken) {
+    throw new Error("Failed to extract csrf_token from Odoo /web/login HTML.");
+  }
+  const cookiesFromLoginPage = buildCookieHeader(getSetCookiesFromResponse(loginPageResponse));
 
   const form = new URLSearchParams();
   form.set("login", email);
@@ -79,7 +101,10 @@ async function loginAndGetSession(email, password) {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "text/html,application/xhtml+xml"
+      "Accept": "text/html,application/xhtml+xml",
+      // CSRF token is tied to the server session, so we must send cookies from the GET /web/login.
+      ...(cookiesFromLoginPage ? { Cookie: cookiesFromLoginPage } : {}),
+      "Referer": LOGIN_URL
     },
     body: form.toString(),
     redirect: "manual"
@@ -88,7 +113,13 @@ async function loginAndGetSession(email, password) {
   const sessionId = extractSessionId(loginResponse);
   if (!sessionId) {
     const loginBody = await loginResponse.text();
-    throw new Error(`Failed to login to Odoo. Status ${loginResponse.status}. ${loginBody.slice(0, 200)}`);
+    const tokenPreview = csrfToken ? `${csrfToken.slice(0, 8)}...` : "missing";
+    throw new Error(
+      `Failed to login to Odoo. Status ${loginResponse.status}. CSRF=${tokenPreview}. ${loginBody.slice(
+        0,
+        200
+      )}`
+    );
   }
 
   return sessionId;
