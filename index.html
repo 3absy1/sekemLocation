@@ -13,6 +13,16 @@
 
     <form id="perDiemForm" class="space-y-4">
       <div>
+        <label for="email" class="block text-gray-700 font-medium mb-1">البريد الإلكتروني</label>
+        <input id="email" type="email" placeholder="example@company.com" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 outline-none" required>
+      </div>
+
+      <div>
+        <label for="password" class="block text-gray-700 font-medium mb-1">كلمة المرور</label>
+        <input id="password" type="password" placeholder="اكتب كلمة المرور" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 outline-none" required>
+      </div>
+
+      <div>
         <label for="customer_name" class="block text-gray-700 font-medium mb-1">اسم العميل</label>
         <input id="customer_name" placeholder="اكتب اسم العميل" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 outline-none" required>
       </div>
@@ -96,6 +106,13 @@
           context: {}
         }
       };
+      const requestBody = {
+        auth: {
+          email: document.getElementById('email').value.trim(),
+          password: document.getElementById('password').value
+        },
+        payload: body
+      };
 
       const responseBox = document.getElementById('responseBox');
 
@@ -103,7 +120,7 @@
         const res = await fetch("/proxy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
+          body: JSON.stringify(requestBody)
         });
 
         const data = await res.text();
