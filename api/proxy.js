@@ -44,6 +44,11 @@ function extractSessionId(response) {
   return null;
 }
 
+function extractLoginError(html) {
+  const match = html.match(/alert[^>]*>\s*([\s\S]*?)\s*<\/div>/i);
+  return match?.[1]?.replace(/\s+/g, " ").trim() || null;
+}
+
 function extractCsrfToken(html) {
   // Odoo login HTML can vary in attribute order/quoting, so match broadly.
   const match =
@@ -114,11 +119,11 @@ async function loginAndGetSession(email, password) {
   if (!sessionId) {
     const loginBody = await loginResponse.text();
     const tokenPreview = csrfToken ? `${csrfToken.slice(0, 8)}...` : "missing";
+    const loginError = extractLoginError(loginBody);
     throw new Error(
-      `Failed to login to Odoo. Status ${loginResponse.status}. CSRF=${tokenPreview}. ${loginBody.slice(
-        0,
-        200
-      )}`
+      `Failed to login to Odoo. Status ${loginResponse.status}. CSRF=${tokenPreview}. ${
+        loginError ? `Reason: ${loginError}` : loginBody.slice(0, 200)
+      }`
     );
   }
 
