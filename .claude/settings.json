@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -D /tmp/headers3.txt -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"method\":\"call\",\"params\":{\"db\":\"\",\"login\":\"mohamed.ali\",\"password\":\"123456\"}}' https://sekemportal.hooktrack.life/web/session/authenticate -o /tmp/authresult.json)"
+    ]
+  }
+}

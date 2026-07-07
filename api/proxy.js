@@ -6,7 +6,7 @@ const ODOO_BASE_URL = "https://sekemportal.hooktrack.life";
 const LOGIN_URL = `${ODOO_BASE_URL}/web/login`;
 const CREATE_URL = `${ODOO_BASE_URL}/web/dataset/call_kw/per.diem/create`;
 const ODOO_EMAIL = process.env.ODOO_EMAIL || "mohamed.ali";
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || "123456";
+const ODOO_PASSWORD = process.env.ODOO_PASSWORD || "1234567";
 
 const app = express();
 // image_data is base64 inside JSON, so the payload grows.
